@@ -7,6 +7,11 @@ from rest_framework.views import APIView
 from .tasks import process_location_task
 
 
+class HelloWorldView(APIView):
+    def get(self, request):
+        return Response({"message": "Hello World wefjhwarlhg"})
+
+
 class UpdateLocationAPIView(APIView):
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -16,7 +21,8 @@ class UpdateLocationAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         # Fallback: Get or Create a dummy user since no Auth is implemented yet
-        user, _ = User.objects.get_or_create(username="default_user")
+        # user, _ = User.objects.get_or_create(username="default_user")
+        user, _ = User.objects.get_or_create(id=1, defaults={"username": "test_user_1"})
 
         lat = request.data.get("latitude")
         lon = request.data.get("longitude")
