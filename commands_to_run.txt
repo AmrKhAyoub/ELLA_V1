@@ -1,0 +1,12 @@
+1 terminal for runserver :
+python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver
+
+2 termianl celery :
+celery -A ELLA worker -l info
+
+3 terminal redis :
+celery -A ELLA worker -l info -P eventlet
+
+python simulate_frontend.py

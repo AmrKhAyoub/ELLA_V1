@@ -16,17 +16,27 @@ class UpdateLocationAPIView(APIView):
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            return x_forwarded_for.split(",")[0]
-        return request.META.get("REMOTE_ADDR", "8.8.8.8")
+            ip = x_forwarded_for.split(",")[0]
+        else:
+            ip = request.META.get("REMOTE_ADDR", "8.8.8.8")
+
+        # If the IP is localhost, replace it with a public IP for testing purposes
+        if ip in ["127.0.0.1", "::1"]:
+            ip = "8.8.8.8"  # IP of Google Public DNS for testing
+
+        return ip
 
     def post(self, request, *args, **kwargs):
-        # Fallback: Get or Create a dummy user since no Auth is implemented yet
-        # user, _ = User.objects.get_or_create(username="default_user")
         user, _ = User.objects.get_or_create(id=1, defaults={"username": "test_user_1"})
 
+        # extract latitude and longitude from the request data
         lat = request.data.get("latitude")
         lon = request.data.get("longitude")
         ip = self.get_client_ip(request)
+
+        # treat empty strings as None for latitude and longitude
+        if lat == "" or lon == "":
+            lat, lon = None, None
 
         # Pass the task to Celery asynchronously
         process_location_task.delay(user.id, lat, lon, ip)

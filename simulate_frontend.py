@@ -13,8 +13,10 @@ L2 = {"latitude": 48.858844, "longitude": 2.294350}
 L3 = {"latitude": 48.858844, "longitude": 2.294350}
 # L4: مكان مختلف (الكولوسيوم، روما)
 L4 = {"latitude": 41.890251, "longitude": 12.492373}
+# L5: مكان مختلف (الكولوسيوم، روما)
+L5 = {"latitude": None, "longitude": None}
 
-locations = [L1, L2, L3, L4]
+locations = [L1, L2, L3, L4, L5]
 
 print("Starting simulation...\n")
 
@@ -27,7 +29,7 @@ for index, loc in enumerate(locations):
 
     # الانتظار لمدة 60 ثانية قبل إرسال الموقع التالي (ما عدا الطلب الأخير)
     if index < len(locations) - 1:
-        print("Waiting for 60 seconds before next update...\n")
-        time.sleep(60)
+        print("Waiting for 30 seconds before next update...\n")
+        time.sleep(30)
 
 print("\nSimulation Finished!")
