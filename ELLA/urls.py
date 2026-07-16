@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 from notifications.views import MarkNotificationsReadAPIView, NotificationListAPIView
 from tracker.views import HelloWorldView, UpdateLocationAPIView
@@ -11,6 +11,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Hello World endpoint
     path("hello/", HelloWorldView.as_view()),
+    # Authentication endpoints (register, login, refresh)
+    path("api/auth/", include("accounts.urls")),
     # API endpoint for updating user location
     path(
         "api/update-location/", UpdateLocationAPIView.as_view(), name="update_location"
