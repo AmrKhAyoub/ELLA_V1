@@ -1,12 +1,14 @@
 # tracker/models.py
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
 
 
 class UserCurrentLocation(models.Model):
     # Since there is only one user for now, we link it to Django's built-in User
     user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="current_location"
+        settings.AUTH_USER_MODEL,
+        related_name="current_location",
+        on_delete=models.CASCADE,
     )
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
@@ -18,4 +20,4 @@ class UserCurrentLocation(models.Model):
     is_static = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user.username} - {self.place_name}"
+        return f"Location for {self.user.email}"

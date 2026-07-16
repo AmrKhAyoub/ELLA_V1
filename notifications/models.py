@@ -1,11 +1,11 @@
 # notifications/models.py
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
 
 
 class NotificationHistory(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="notifications"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
     )
     title = models.CharField(max_length=255)
     message = models.TextField()

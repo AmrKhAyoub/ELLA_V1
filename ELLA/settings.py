@@ -1,4 +1,5 @@
 # ELLA/settings.py
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,6 +23,7 @@ INSTALLED_APPS = [
     # Local apps
     "tracker",
     "notifications",
+    "accounts",
 ]
 
 
@@ -78,8 +80,14 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
-STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# our custom user model
+AUTH_USER_MODEL = "accounts.CustomUser"
+# Static and Media Files
+STATIC_URL = "/static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Celery Configuration
 CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
