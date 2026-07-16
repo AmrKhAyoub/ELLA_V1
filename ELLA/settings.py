@@ -3,7 +3,24 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 2. Construct the path to the .env file
+env_path = os.path.join(BASE_DIR, ".env")
+
+# 3. Load the environment variables from the file
+load_dotenv(env_path)
+
+# 4. Now os.environ.get will successfully find the key!
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+
+# Optionally, you can raise an error if the key is missing to prevent silent failures
+if not GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY is missing from the .env file!")
+
 SECRET_KEY = "django-insecure-tx^8_5(qcqy%6n&vb9l8xf#w50m&v0^ti1cml$54#mpkwy4xd)"
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
@@ -25,6 +42,7 @@ INSTALLED_APPS = [
     "tracker",
     "notifications",
     "accounts",
+    "chats",
 ]
 
 

@@ -13,6 +13,8 @@ urlpatterns = [
     path("hello/", HelloWorldView.as_view()),
     # Authentication endpoints (register, login, refresh)
     path("api/auth/", include("accounts.urls")),
+    # Chat API endpoints
+    path("api/chats/", include("chats.urls")),
     # API endpoint for updating user location
     path(
         "api/update-location/", UpdateLocationAPIView.as_view(), name="update_location"

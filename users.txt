@@ -1,0 +1,21 @@
+--- SUPERUSER ---
+
+
+--- USER ---
+
+EMAIL:
+ai_tester@example.com
+USERNAME :
+ai_tester
+PASSWORD:
+password123
+
+EMAIL:
+alex@gmail.com
+USERNAME :
+alex
+PASSWORD:
+alex123
+
+
+
