@@ -6,24 +6,26 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # We will use user_id passed in URL parameters (e.g., ws://.../ws/1/)
-        self.user_id = self.scope["url_route"]["kwargs"]["user_id"]
-        self.group_name = f"user_{self.user_id}"
+        # Check if the user was authenticated by our JWTAuthMiddleware
+        self.user = self.scope.get("user")
 
-        # Join user-specific group
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()
+        if self.user and self.user.is_authenticated:
+            # Use the authenticated user's ID for the group name
+            self.group_name = f"user_{self.user.id}"
+            await self.channel_layer.group_add(self.group_name, self.channel_name)
+            await self.accept()
+        else:
+            # Reject connection if not authenticated
+            await self.close()
 
     async def disconnect(self, close_code):
-        # Leave room group
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, "group_name"):
+            await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
-    # Receive message from room group (Triggered by Celery)
     async def send_notification(self, event):
         title = event["title"]
         message = event["message"]
 
-        # Send message to WebSocket
         await self.send(
             text_data=json.dumps(
                 {"title": title, "message": message}, ensure_ascii=False

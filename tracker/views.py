@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -16,6 +17,8 @@ class HelloWorldView(APIView):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class UpdateLocationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -30,8 +33,8 @@ class UpdateLocationAPIView(APIView):
         return ip
 
     def post(self, request, *args, **kwargs):
-        user, _ = User.objects.get_or_create(id=1, defaults={"username": "test_user_1"})
-
+        # user, _ = User.objects.get_or_create(id=1, defaults={"username": "test_user_1"})
+        user = request.user
         # extract latitude and longitude from the request data
         lat = request.data.get("latitude")
         lon = request.data.get("longitude")
