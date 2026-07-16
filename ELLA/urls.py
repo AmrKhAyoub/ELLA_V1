@@ -15,6 +15,8 @@ urlpatterns = [
     path("api/auth/", include("accounts.urls")),
     # Chat API endpoints
     path("api/chats/", include("chats.urls")),
+    # Analytics API endpoints
+    path("api/analytics/", include("analytics.urls")),
     # API endpoint for updating user location
     path(
         "api/update-location/", UpdateLocationAPIView.as_view(), name="update_location"
