@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third party
+    "corsheaders",
     "rest_framework",
     "django_celery_beat",
     "channels",
@@ -23,10 +24,12 @@ INSTALLED_APPS = [
     "notifications",
 ]
 
+
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # 1. Put this at the absolute top
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
+    "django.middleware.common.CommonMiddleware",  # 2. CorsMiddleware MUST be above this
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -84,3 +87,8 @@ CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]

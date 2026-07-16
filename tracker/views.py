@@ -1,5 +1,7 @@
 # tracker/views.py
 from django.contrib.auth.models import User
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,6 +14,7 @@ class HelloWorldView(APIView):
         return Response({"message": "Hello World wefjhwarlhg"})
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class UpdateLocationAPIView(APIView):
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
