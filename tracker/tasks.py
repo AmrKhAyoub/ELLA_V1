@@ -4,7 +4,6 @@ from datetime import timedelta
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
-from django.contrib.auth.models import User
 from django.utils import timezone
 
 from notifications.models import NotificationHistory
