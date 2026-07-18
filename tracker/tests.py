@@ -1,4 +1,6 @@
 # tracker/tests.py
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -8,58 +10,105 @@ from rest_framework_simplejwt.tokens import RefreshToken
 User = get_user_model()
 
 
-class TrackerAPITests(APITestCase):
+class TrackerComprehensiveAPITests(APITestCase):
     def setUp(self):
         """
-        Set up the test environment: create a valid user, generate a JWT token,
-        and define the endpoint URL.
+        Set up primary test users, JWT access tokens, and API endpoints.
         """
         self.user = User.objects.create_user(
-            username="tracker_user",
-            email="tracker@example.com",
-            password="StrongPassword123!",
+            username="test_tracker_user",
+            email="tracker@ella.com",
+            password="SecurePassword123!",
         )
-        # Generate JWT Token for the user
-        self.token = str(RefreshToken.for_user(self.user).access_token)
+        self.access_token = str(RefreshToken.for_user(self.user).access_token)
         self.url = reverse(
             "update_location"
-        )  # Make sure this name matches the one in ELLA/urls.py
+        )  # Matches path('api/tracker/update-location/', ...)
 
-    def test_update_location_with_valid_token(self):
+    @patch("tracker.views.process_location_task.delay")
+    def test_update_location_success_with_coordinates(self, mock_task):
         """
-        Test that an authenticated user with a valid JWT token can update their location.
+        Scenario 1: Authenticated request with complete latitude and longitude.
+        Expected: Status 202, Task triggered with parsed coordinates.
         """
-        # Inject the token into the request headers
-        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.access_token}")
 
-        data = {"latitude": 40.7128, "longitude": -74.0060}
-        response = self.client.post(self.url, data)
+        payload = {"latitude": 30.0444, "longitude": 31.2357}
+        response = self.client.post(self.url, payload, format="json")
 
-        # We expect a 202 ACCEPTED status since Celery processes it in the background
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertEqual(
             response.data["message"], "Location received. Processing in background..."
         )
 
-    def test_update_location_without_token(self):
-        """
-        Test that the API rejects requests that do not include an authorization token.
-        """
-        data = {"latitude": 40.7128, "longitude": -74.0060}
-        # No credentials added here
-        response = self.client.post(self.url, data)
+        # Verify that celery task was called with correct arguments
+        mock_task.assert_called_once_with(self.user.id, 30.0444, 31.2357, "8.8.8.8")
 
-        # We expect a 401 UNAUTHORIZED status
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_update_location_with_missing_coordinates(self):
+    @patch("tracker.views.process_location_task.delay")
+    def test_update_location_with_empty_strings(self, mock_task):
         """
-        Test that the API still accepts the request if coordinates are missing,
-        meaning it will rely on the IP address.
+        Scenario 2: Authenticated request where coordinates are empty strings.
+        Expected: Status 202, fields mapped to None so fallback logic triggers successfully.
         """
-        self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.access_token}")
 
-        # Empty payload
-        response = self.client.post(self.url, {})
+        payload = {"latitude": "", "longitude": ""}
+        response = self.client.post(self.url, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mock_task.assert_called_once_with(self.user.id, None, None, "8.8.8.8")
+
+    @patch("tracker.views.process_location_task.delay")
+    def test_update_location_with_missing_keys(self, mock_task):
+        """
+        Scenario 3: Authenticated request with completely missing coordinate keys in the payload.
+        Expected: Status 202, missing fields evaluate to None.
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.access_token}")
+
+        response = self.client.post(self.url, {}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mock_task.assert_called_once_with(self.user.id, None, None, "8.8.8.8")
+
+    def test_update_location_unauthenticated(self):
+        """
+        Scenario 4: Request made without any Authorization headers.
+        Expected: Status 401 Unauthorized.
+        """
+        response = self.client.post(
+            self.url, {"latitude": 30.0, "longitude": 31.0}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_update_location_invalid_token(self):
+        """
+        Scenario 5: Request made with an expired or manipulated JWT token.
+        Expected: Status 401 Unauthorized.
+        """
+        self.client.credentials(
+            HTTP_AUTHORIZATION="Bearer invalid_or_expired_token_signature"
+        )
+        response = self.client.post(
+            self.url, {"latitude": 30.0, "longitude": 31.0}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @patch("tracker.views.process_location_task.delay")
+    def test_ip_extraction_from_x_forwarded_for(self, mock_task):
+        """
+        Scenario 6: Validate IP extraction logic from custom HTTP headers (X-Forwarded-For).
+        Expected: Extracted client IP matches the first IP in the forwarded sequence.
+        """
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.access_token}")
+
+        # Simulating a proxy environment forwarding real IP
+        response = self.client.post(
+            self.url,
+            {"latitude": 30.0, "longitude": 31.0},
+            HTTP_X_FORWARDED_FOR="198.51.100.42, 127.0.0.1",
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mock_task.assert_called_once_with(self.user.id, 30.0, 31.0, "198.51.100.42")

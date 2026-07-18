@@ -1,0 +1,353 @@
+================================================================================
+           YOUR ENGLISH LEARNING PERSONALITY MAP вЂ“ COMPLETE QUESTIONNAIRE
+================================================================================
+
+Part 1 вЂ“ The Icebreakers (About You)
+------------------------------------
+
+1.1  (Free text)
+     What should we call you? (e.g., Leo, Coffee Lover)
+
+1.2  (Select one)
+     Which age group are you in?
+     - Under 18
+     - 18вЂ“24
+     - 25вЂ“34
+     - 35вЂ“44
+     - 45+
+
+1.3  (Free text)
+     What's your current occupation or field of study? (e.g., Product Manager, Med Student)
+
+1.4  (Free text, default "Chinese")
+     What is your native language? (if not English, please specify)
+
+
+Part 2 вЂ“ Your English Skills & Current Status
+---------------------------------------------
+
+2.1  (Scale 1вЂ“10, select one)
+     On a scale of 1вЂ“10, how would you rate your OVERALL English level right now?
+     (1 = рџ° I get a headache, 10 = рџЋ It's like my second language)
+
+2.2  (Scale 1вЂ“10 for each skill)
+     Please rate your specific skills separately on a scale of 1вЂ“10:
+     - Reading: ______
+     - Listening: ______
+     - Speaking: ______
+     - Writing: ______
+
+2.3  (Table вЂ“ select one per scenario: "рџ… Not confident" / "рџ™‚ Okay" / "рџЋ Very confident")
+     How confident are you in these real-life scenarios?
+     - Ordering food at a restaurant
+     - Chatting casually with colleagues/friends
+     - Writing a work email / message
+     - Watching a TV show without subtitles
+     - Reading an English news article
+     - Giving a presentation or speech
+
+2.4  (Select one)
+     Which sentence best describes your current level?
+     - A. "Hello. My name is... I'm from..." (Basic greetings)
+     - B. "I can order food and ask for directions, but that's about it." (Survival)
+     - C. "I can have a simple conversation, but I get stuck with complex ideas." (Stuck)
+     - D. "I speak quite fluently, though I still make mistakes sometimes." (Fluently with errors)
+     - E. "I'm fluent вЂ” I can joke, argue, and persuade in English." (Native-like)
+
+2.5  (Select all that apply, plus "Other")
+     What are your biggest pain points or struggles?
+     - Speaking (blank mind / can't express)
+     - Listening (can't keep up with speed)
+     - Vocabulary (lack of words)
+     - Grammar (tenses / plurals / structure)
+     - Pronunciation (not clear / accent)
+     - Writing (not fluent / illogical)
+     - Reading (boring / get tired)
+     - Idioms / slang (miss the jokes)
+     - Overall confidence (afraid to make mistakes)
+     - Feeling overwhelmed when seeing many new words in one lesson
+     - Other (please specify): _________
+
+2.6  (Select all that apply)
+     How do you mainly expose yourself to English?
+     - School / classes
+     - Work / professional use
+     - Movies / TV / YouTube
+     - Music / Podcasts
+     - Reading books / news / articles
+     - Games / Social apps
+     - Friends / language exchange
+     - Rarely / only when necessary
+
+2.7  (Select one)
+     When reading English texts, what is your typical approach?
+     - Read slowly and carefully, focusing on every word and detail
+     - Read quickly to get the general idea (skimming/scanning), ignoring unknown details
+     - It depends on the text (e.g., casual vs. academic/work materials)
+
+
+Part 3 вЂ“ Your Interests Universe (Core Topics)
+----------------------------------------------
+
+3.1  (Select all that apply вЂ“ this selection triggers follow-up sub-questions)
+     Which of these broad interest categories do you genuinely like?
+     - рџ“љ Reading
+     - рџЋ¬ Movies & TV
+     - рџЋµ Music
+     - вљЅ Sports & Fitness
+     - рџЌњ Food & Cooking
+     - вњ€пёЏ Travel & Adventure
+     - рџЋ® Tech & Gaming
+     - рџЋЁ Arts & Creativity
+     - рџЊ± Lifestyle & Wellness
+     - рџ’ј Career & Learning
+
+--- [Dynamic sub-questions inserted based on your selections above] ---
+
+For EACH category you selected in 3.1, you will be asked:
+"Great! You like [category]. Which specific topics do you enjoy? (select all that apply)"
+with the following detailed options (each includes an "Other" text field):
+
+рџ“љ Reading:
+  - Fiction / Novels
+  - Fantasy & Sci-Fi
+  - Mystery / Thriller
+  - Romance
+  - Biographies / Memoirs
+  - Self-help / Personal Development
+  - Business & Finance
+  - History & Politics
+  - Science & Nature
+  - Poetry
+  - Comics / Graphic Novels
+  - Other: _________
+
+рџЋ¬ Movies & TV:
+  - Drama
+  - Comedy
+  - Action / Adventure
+  - Sci-Fi / Fantasy
+  - Crime / Mystery
+  - Documentary (Nature, History, Tech)
+  - Reality TV (Competition, Travel)
+  - Anime / Animation
+  - Romance / Romantic Comedy
+  - Horror / Thriller
+  - Talk shows / Interviews
+  - Other: _________
+
+рџЋµ Music:
+  - Pop
+  - Rock & Indie
+  - Hip-Hop / Rap
+  - R&B / Soul
+  - Electronic / Dance (EDM)
+  - Jazz / Blues
+  - Classical / Orchestral
+  - K-Pop / J-Pop
+  - Country / Folk
+  - Latin (Reggaeton, Salsa)
+  - Lo-fi / Chillhop (for studying)
+  - Other: _________
+
+вљЅ Sports & Fitness:
+  - Football (Soccer)
+  - Basketball
+  - Tennis / Badminton
+  - Running / Track & Field
+  - Yoga / Pilates
+  - Gym / Weightlifting
+  - Swimming / Water sports
+  - Cycling / Mountain biking
+  - Hiking / Camping
+  - Martial Arts / Boxing
+  - E-sports / Competitive Gaming (watch or play)
+  - Just a spectator (enjoy watching, not playing)
+  - Other: _________
+
+рџЌњ Food & Cooking:
+  - Home cooking (everyday meals)
+  - Baking (bread, cakes, pastries)
+  - Restaurant hopping / fine dining
+  - Street food / local markets
+  - Coffee & Tea culture
+  - Wine / Cocktails / Beverages
+  - Vegan / Vegetarian / Plant-based
+  - Food blogs / Food vlogs
+  - World cuisines (Italian, Thai, Mexican, etc.)
+  - Other: _________
+
+вњ€пёЏ Travel & Adventure:
+  - City breaks / Urban exploration
+  - Beach / Island vacations
+  - Mountains / National parks
+  - Backpacking / Budget travel
+  - Luxury / Resort travel
+  - Road trips / Self-driving
+  - Cultural / Historical tours
+  - Food tourism (traveling for food)
+  - Adventure sports (skydiving, scuba diving, etc.)
+  - Other: _________
+
+рџЋ® Tech & Gaming:
+  - Mobile gaming (casual, strategy)
+  - PC gaming (Steam, MMOs)
+  - Console gaming (PlayStation, Xbox, Switch)
+  - RPG (Role-playing games)
+  - FPS (First-person shooters)
+  - Indie / Art games
+  - Tech news / Gadgets
+  - Programming / Coding
+  - AI / Future tech / Robotics
+  - Other: _________
+
+рџЋЁ Arts & Creativity:
+  - Photography (digital or film)
+  - Drawing / Sketching / Painting
+  - Graphic Design / UI/UX
+  - Creative Writing (fiction, poetry, essays)
+  - Music production / Composition
+  - Dance (hip-hop, ballet, contemporary)
+  - Theater / Acting
+  - Visiting museums / galleries
+  - DIY / Crafts (knitting, woodwork, etc.)
+  - Other: _________
+
+рџЊ± Lifestyle & Wellness:
+  - Mindfulness / Meditation
+  - Productivity / Time management
+  - Fashion / Streetwear
+  - Beauty / Skincare / Makeup
+  - Interior design / Home organizing
+  - Parenting / Family life
+  - Pets / Animal care
+  - Sustainability / Zero waste / Eco-living
+  - Personal Finance / Investing
+  - Other: _________
+
+рџ’ј Career & Learning:
+  - Tech / IT (Data, AI, Software)
+  - Business / Entrepreneurship
+  - Marketing / Social Media / Branding
+  - Design / Creative Arts
+  - Healthcare / Medicine / Nursing
+  - Education / Teaching / Training
+  - Finance / Accounting
+  - Law / Policy / Public Administration
+  - Arts / Humanities / Social Sciences
+  - Still exploring / undecided
+  - Other: _________
+
+--- [After all sub-category questions, you will see these two open-ended questions] ---
+
+3.2  (Free text)
+     If you had to describe yourself in one English word/phrase, what would it be and why?
+
+3.3  (Free text)
+     What's a topic you're genuinely excited about right now? (Could be anything, e.g., baking sourdough, binge-watching a specific show, AI tools)
+
+3.4  (Free text)
+     Is there a specific subject you always enjoy reading or learning about, no matter how many times you see it?
+
+
+Part 4 вЂ“ How You Like to Learn & Study Habits
+---------------------------------------------
+
+4.1  (Select up to 3 favorites, but select all that apply generally)
+     What learning formats do you find most appealing? (Please select all you like, and optionally mark your top 3)
+     - Short videos (3-5 minutes, like TikTok/Reels style)
+     - Audio / Podcasts (can listen while commuting)
+     - Text / Articles (in-depth reading)
+     - Interactive conversation (chatting with AI or real people)
+     - Gamification (points, unlocks, challenges)
+     - Movies / TV shows with language analysis
+     - Music / Song lyrics with explanations
+     - Reading books / news with built-in annotations
+     - Writing practice with personalized feedback
+
+4.2  (Select one)
+     On average, how many minutes per day do you currently spend on English learning content?
+     - 0вЂ“5 minutes
+     - 5вЂ“15 minutes
+     - 15вЂ“30 minutes
+     - 30вЂ“60 minutes
+     - 60+ minutes
+
+4.3  (Select one)
+     What is your ideal single learning session length?
+     - 5вЂ“10 min (micro-sessions)
+     - 15вЂ“20 min (daily habit)
+     - 30 min (focused block)
+     - 45вЂ“60 min (deep dive)
+     - Depends on my mood / I don't have a fixed preference
+
+4.4  (Select all that apply)
+     When are you most likely to open a notification or actively choose to study?
+     - Early morning (before 9 AM)
+     - Late morning / Noon
+     - Afternoon
+     - Evening (after work/school, before 9 PM)
+     - Late night (after 9 PM)
+     - Anytime / Whenever I get a free moment
+
+4.5  (Select all that apply)
+     Which "learning personality" fits you best?
+     - Planner (I like schedules and following a curriculum)
+     - Spontaneous (I go with the flow based on my mood)
+     - Social (I love interaction and group learning)
+     - Solitary (I prefer to learn alone, quietly)
+     - Competitive (rankings and leaderboards motivate me)
+     - Explorer (I like discovering materials myself)
+
+4.6  (Select all that apply)
+     What kind of learning atmosphere do you prefer?
+     - Fun & casual (like chatting with a friend)
+     - Structured & clear (like a traditional teacher)
+     - Fully immersive (all English, no translation)
+     - Bilingual (English with native language support, not too hard)
+     - Warm & companionable (with emotional support)
+     - Concise and to the point (no fluff, just the facts)
+
+4.7  (Select one)
+     When you encounter a new, unknown word while reading or listening, what do you usually do?
+     - Look it up immediately in a dictionary
+     - Try to guess the meaning from the context
+     - Ignore it and continue (if it doesn't block comprehension)
+     - Write it down to check later
+     - Feel frustrated and stop reading
+
+4.8  (Select one)
+     Roughly what percentage of English learning content (articles, videos, lessons) do you actually finish after you start?
+     - 0вЂ“20% (I rarely finish)
+     - 20вЂ“40% (I finish some)
+     - 40вЂ“60% (about half)
+     - 60вЂ“80% (I finish most)
+     - 80вЂ“100% (I almost always finish what I start)
+
+4.9  (Select one)
+     How often do you save, bookmark, or share something you've learned in English?
+     - Never
+     - Rarely
+     - Sometimes
+     - Often
+     - Always
+
+
+Part 5 вЂ“ One Last Thing (Motivation & Fun)
+------------------------------------------
+
+5.1  (Free text)
+     If you could have dinner with anyone (real, historical, or fictional), who would it be and why?
+
+5.2  (Free text)
+     What is your primary goal for learning English? (e.g., Pass IELTS/TOEFL, watch movies without subtitles, get a promotion, travel freely, make foreign friends)
+
+5.3  (Free text)
+     What's your current "theme song" or a song that motivates you right now? (Any language, just the title)
+
+5.4  (Free text)
+     Any last words, feedback, or expectations for this learning journey? (Just say hi or tell us anything!)
+
+================================================================================
+                              End of Questionnaire
+================================================================================

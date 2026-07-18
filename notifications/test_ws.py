@@ -1,61 +1,109 @@
 # notifications/tests_ws.py
+import json
+
+from channels.layers import get_channel_layer
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, override_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from ELLA.asgi import application  # Import your ASGI application
+from ELLA.asgi import application
 
 User = get_user_model()
 
+# Force the test runner to use an In-Memory channel layer instead of Redis
+# This guarantees that tests won't hang if Redis is down or misconfigured.
+TEST_CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
-class WebSocketAuthenticationTests(TransactionTestCase):
+
+@override_settings(CHANNEL_LAYERS=TEST_CHANNEL_LAYERS)
+class WebSocketAuthenticationAndMessagingTests(TransactionTestCase):
+    # This attribute ensures that the database connections are handled cleanly across threads
+    serialized_rollback = True
+
     def setUp(self):
         """
-        Set up a user and generate a valid JWT token for WebSocket testing.
+        Set up a real test user and generate a valid JWT token.
         """
         self.user = User.objects.create_user(
-            username="ws_user", email="ws@example.com", password="StrongPassword123!"
+            username="ws_test_user",
+            email="ws_test@ella.com",
+            password="SecurePassword123!",
         )
         self.valid_token = str(RefreshToken.for_user(self.user).access_token)
 
-    async def test_websocket_connection_with_valid_token(self):
+    async def test_successful_websocket_handshake_with_token(self):
         """
-        Test that the custom JWTAuthMiddleware accepts the connection
-        when a valid token is provided in the query string.
+        Scenario 1: Connect to WebSocket passing a valid JWT token in the query parameters.
+        Expected: Handshake is successful, connection is accepted.
         """
-        # Pass the token in the URL just like the React frontend would do
         ws_url = f"/ws/notifications/?token={self.valid_token}"
-
         communicator = WebsocketCommunicator(application, ws_url)
-        connected, subprotocol = await communicator.connect()
 
-        # The connection should be accepted (True)
+        # We increase the timeout to 10 seconds to allow Windows environments
+        # ample time to warm up the ASGI context.
+        connected, _ = await communicator.connect(timeout=10)
         self.assertTrue(connected)
 
-        # Clean up by disconnecting
         await communicator.disconnect()
 
-    async def test_websocket_connection_without_token(self):
+    async def test_rejected_websocket_handshake_missing_token(self):
         """
-        Test that the connection is rejected if no token is provided.
+        Scenario 2: Try to establish a connection with no token in the URL query parameters.
+        Expected: Connection is rejected immediately.
         """
         ws_url = "/ws/notifications/"
-
         communicator = WebsocketCommunicator(application, ws_url)
-        connected, subprotocol = await communicator.connect()
 
-        # The connection should be rejected and closed (False)
+        connected, _ = await communicator.connect(timeout=10)
         self.assertFalse(connected)
 
-    async def test_websocket_connection_with_invalid_token(self):
+    async def test_rejected_websocket_handshake_invalid_token(self):
         """
-        Test that the connection is rejected if a fake or expired token is provided.
+        Scenario 3: Try to connect passing a tampered or expired JWT token.
+        Expected: Connection is rejected.
         """
-        ws_url = "/ws/notifications/?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.fake_payload.fake_signature"
-
+        ws_url = "/ws/notifications/?token=invalid.token.string"
         communicator = WebsocketCommunicator(application, ws_url)
-        connected, subprotocol = await communicator.connect()
 
-        # The connection should be rejected (False)
+        connected, _ = await communicator.connect(timeout=10)
         self.assertFalse(connected)
+
+    async def test_live_notification_reception_over_websocket(self):
+        """
+        Scenario 4: Establish a valid connection, then simulate pushing a notification
+        payload directly to the user's specific Channel Group.
+        Expected: The WebSocket client receives the exact JSON structure.
+        """
+        ws_url = f"/ws/notifications/?token={self.valid_token}"
+        communicator = WebsocketCommunicator(application, ws_url)
+
+        connected, _ = await communicator.connect(timeout=10)
+        self.assertTrue(connected)
+
+        # Trigger a direct push through the channel layer
+        channel_layer = get_channel_layer()
+        user_group_name = f"user_{self.user.id}"
+
+        payload = {
+            "type": "send_notification",
+            "title": "Celery Alert",
+            "message": "Your background task has finished successfully!",
+        }
+
+        await channel_layer.group_send(user_group_name, payload)
+
+        # Check if the communicator client received the payload
+        response_text = await communicator.receive_from(timeout=10)
+        response_data = json.loads(response_text)
+
+        self.assertEqual(response_data["title"], "Celery Alert")
+        self.assertEqual(
+            response_data["message"], "Your background task has finished successfully!"
+        )
+
+        await communicator.disconnect()

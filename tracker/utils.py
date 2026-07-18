@@ -1,5 +1,6 @@
 # tracker/utils.py
 import math
+import random
 import urllib.parse
 from datetime import datetime
 
@@ -9,6 +10,80 @@ from timezonefinder import TimezoneFinder
 
 tf = TimezoneFinder()
 HEADERS = {"User-Agent": "ELLA-App/1.0"}
+
+# Dictionary containing categories and rich vocabulary words for each type of place
+VOCABULARY_DATABASE = {
+    "university": [
+        "lecture",
+        "exam",
+        "seminar",
+        "professor",
+        "campus",
+        "assignment",
+        "scholarship",
+        "thesis",
+        "dormitory",
+        "graduate",
+        "syllabus",
+        "faculty",
+    ],
+    "restaurant": [
+        "bill",
+        "cashier",
+        "menu",
+        "waiter",
+        "cuisine",
+        "appetizer",
+        "dessert",
+        "reservation",
+        "chef",
+        "recipe",
+        "beverage",
+        "gratuity",
+    ],
+    "hospital": [
+        "doctor",
+        "nurse",
+        "patient",
+        "prescription",
+        "emergency",
+        "ward",
+        "surgery",
+        "pharmacy",
+        "diagnosis",
+        "clinic",
+        "symptom",
+        "treatment",
+    ],
+    "tourism": [
+        "souvenir",
+        "monument",
+        "landmark",
+        "guidebook",
+        "sightseeing",
+        "itinerary",
+        "attraction",
+        "museum",
+        "excursion",
+        "heritage",
+        "traveler",
+        "destination",
+    ],
+    "general": [
+        "explore",
+        "discover",
+        "journey",
+        "landmark",
+        "wander",
+        "location",
+        "neighborhood",
+        "scenery",
+        "path",
+        "map",
+        "direction",
+        "adventure",
+    ],
+}
 
 
 def get_location_by_ip(ip):
@@ -85,7 +160,7 @@ def get_places_nearby(lat, lon, radius_m=1000):
     categories = {
         "tourism": '[out:json][timeout:25];(node["tourism"](around:{r},{la},{lo});way["tourism"](around:{r},{la},{lo}););out body 50;',
         "amenities": '[out:json][timeout:25];(node["amenity"](around:{r},{la},{lo});way["amenity"](around:{r},{la},{lo}););out body 50;',
-    }  # Kept short for brevity, but you can add your other categories here
+    }
 
     all_places = []
     for category, query_template in categories.items():
@@ -112,10 +187,30 @@ def get_places_nearby(lat, lon, radius_m=1000):
                         continue
                     distance = calculate_distance(lat, lon, elem_lat, elem_lon)
 
+                    # Determine the subcategory from tags for vocabulary mapping
+                    amenity_type = tags.get("amenity", "")
+                    tourism_type = tags.get("tourism", "")
+
+                    place_type = "general"
+                    if tourism_type:
+                        place_type = "tourism"
+                    elif amenity_type in ["university", "college", "school"]:
+                        place_type = "university"
+                    elif amenity_type in [
+                        "restaurant",
+                        "cafe",
+                        "fast_food",
+                        "food_court",
+                    ]:
+                        place_type = "restaurant"
+                    elif amenity_type in ["hospital", "clinic", "doctors"]:
+                        place_type = "hospital"
+
                     all_places.append(
                         {
                             "name": name,
                             "distance_meters": round(distance, 1),
+                            "type": place_type,
                         }
                     )
         except Exception:
@@ -125,9 +220,11 @@ def get_places_nearby(lat, lon, radius_m=1000):
     return all_places[:20]
 
 
-def create_notification_content(place_name, nearby_places, is_static=False):
-    import random
+# tracker/utils.py
+# (قم بتحديث الجزء الخاص بدالة create_notification_content فقط)
 
+
+def create_notification_content(place_name, nearby_places, is_static=False):
     if is_static:
         messages = [
             "Are you still here?",
@@ -137,8 +234,36 @@ def create_notification_content(place_name, nearby_places, is_static=False):
         return random.choice(messages)
     else:
         if nearby_places:
-            places_names = [p["name"] for p in nearby_places[:3]]
-            places_str = ", ".join(places_names)
-            return f"You are now in {place_name}! The nearest places are: {places_str}."
+            # Get the closest place to determine the category context
+            closest_place = nearby_places[0]
+            place_type = closest_place.get("type", "general")
+            place_category_name = (
+                "interesting place" if place_type == "general" else place_type
+            )
+
+            # Select the vocabulary words based on the category
+            vocab_pool = VOCABULARY_DATABASE.get(
+                place_type, VOCABULARY_DATABASE["general"]
+            )
+            # Safely sample 2 random words from the pool
+            selected_words = random.sample(vocab_pool, min(2, len(vocab_pool)))
+
+            # --- MODIFIED HERE: Removed curly braces {} and used single quotes instead ---
+            formatted_words = f"'{selected_words[0]}' and '{selected_words[1]}'"
+
+            # Randomly select a prompt style for educational engagement
+            prompts = [
+                f"You are now in {place_name}! There is a {place_category_name} near you! Can you explain what is {formatted_words}?",
+                f"You are now in {place_name}! There is a {place_category_name} near you! Have you heard of {formatted_words}?",
+                f"You are now in {place_name}! While exploring this {place_category_name}, do you know the meaning of {formatted_words}?",
+            ]
+            return random.choice(prompts)
         else:
-            return f"You are now in {place_name}!"
+            # Fallback when no nearby places are discovered, using general vocabulary
+            vocab_pool = VOCABULARY_DATABASE["general"]
+            selected_words = random.sample(vocab_pool, 2)
+
+            # --- MODIFIED HERE: Removed curly braces {} and used single quotes instead ---
+            formatted_words = f"'{selected_words[0]}' and '{selected_words[1]}'"
+
+            return f"You are now in {place_name}! Let's start an adventure. Do you know the words {formatted_words}?"

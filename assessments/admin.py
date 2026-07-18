@@ -1,6 +1,3 @@
 from django.contrib import admin
 
-from .models import Mistake
-
 # Register your models here.
-admin.site.register(Mistake)

@@ -1,4 +1,7 @@
 --- SUPERUSER ---
+amr@gmail.com
+pass:
+amr
 
 
 --- USER ---
