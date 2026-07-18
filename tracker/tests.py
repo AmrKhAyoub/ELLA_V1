@@ -7,6 +7,10 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+# Import the new models and tasks
+from .models import EnrichedPlace
+from .tasks import enrich_places_data_task
+
 User = get_user_model()
 
 
@@ -112,3 +116,68 @@ class TrackerComprehensiveAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         mock_task.assert_called_once_with(self.user.id, 30.0, 31.0, "198.51.100.42")
+
+
+class TrackerTasksTests(APITestCase):
+    def setUp(self):
+        """
+        Set up initial data for testing background tasks.
+        """
+        # Create a place that is already enriched to test the skipping logic
+        EnrichedPlace.objects.create(
+            name="Existing Cafe",
+            city="Cairo",
+            place_type="restaurant",
+            ai_data={"description": "A very old and famous cafe."},
+        )
+
+    @patch("tracker.tasks.generate_ai_response_json")
+    def test_enrich_places_data_task_new_place(self, mock_generate_json):
+        """
+        Test that a new place correctly calls the AI service and saves the returned JSON to the DB.
+        """
+        # Setup mock to return a valid dictionary
+        mock_generate_json.return_value = {
+            "description": "A quiet place for studying.",
+            "atmosphere": "Academic",
+            "contextual_vocabulary": ["book", "study", "exam", "focus", "read"],
+            "language_opportunity": "Try reading a paragraph here.",
+            "mini_challenge": "Read one page of an English book.",
+        }
+
+        places_list = [{"name": "New University Library", "type": "university"}]
+        enrich_places_data_task(places_list, "Cairo")
+
+        # Verify DB insertion
+        self.assertTrue(
+            EnrichedPlace.objects.filter(
+                name="New University Library", city="Cairo"
+            ).exists()
+        )
+        self.assertTrue(mock_generate_json.called)
+
+    @patch("tracker.tasks.generate_ai_response_json")
+    def test_enrich_places_data_task_existing_place(self, mock_generate_json):
+        """
+        Test that an existing place is correctly skipped to prevent redundant API calls.
+        """
+        places_list = [{"name": "Existing Cafe", "type": "restaurant"}]
+        enrich_places_data_task(places_list, "Cairo")
+
+        # Service should NOT be called because it is already in the database
+        self.assertFalse(mock_generate_json.called)
+
+    @patch("tracker.tasks.generate_ai_response_json")
+    def test_enrich_places_data_task_api_failure(self, mock_generate_json):
+        """
+        Test that the task handles an empty/None response gracefully without creating a DB entry.
+        """
+        # Simulate an API failure returning None
+        mock_generate_json.return_value = None
+
+        places_list = [{"name": "Failing Museum", "type": "tourism"}]
+        enrich_places_data_task(places_list, "Alexandria")
+
+        # Verify it wasn't saved to the DB
+        self.assertFalse(EnrichedPlace.objects.filter(name="Failing Museum").exists())
+        self.assertTrue(mock_generate_json.called)

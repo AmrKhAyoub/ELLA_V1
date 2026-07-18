@@ -1,9 +1,7 @@
-# Create your tests here.
 # chats/tests.py
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -79,17 +77,19 @@ class ChatsAPITests(APITestCase):
         )
 
     # ---------------------------------------------------------
-    # The magical patch! We intercept 'get_ai_tutor_response'
-    # before it hits the internet and force it to return a fake string.
+    # UPDATED PATCH: We now intercept 'generate_ai_response_text'
+    # from the centralized LLM service.
     # ---------------------------------------------------------
-    @patch("chats.views.get_ai_tutor_response")
-    def test_send_message_success(self, mock_ai_service):
+    @patch("chats.views.generate_ai_response_text")
+    def test_send_message_success(self, mock_generate_text):
         """
-        Test that sending a message saves the user message, calls the AI service,
+        Test that sending a message saves the user message, calls the NEW AI service,
         and saves the AI response correctly.
         """
         # Configure the fake AI to return this string
-        mock_ai_service.return_value = "Hello! I am the mock AI tutor. How can I help?"
+        mock_generate_text.return_value = (
+            "Hello! I am the mock AI tutor. How can I help?"
+        )
 
         data = {"content_text": "Hi AI, can you teach me English?"}
         response = self.client.post(self.send_message_url, data)
@@ -109,8 +109,8 @@ class ChatsAPITests(APITestCase):
             "Hello! I am the mock AI tutor. How can I help?",
         )
 
-        # Verify that our service function was actually called
-        mock_ai_service.assert_called_once()
+        # Verify that our centralized service function was actually called
+        mock_generate_text.assert_called_once()
 
     def test_send_message_missing_content(self):
         """
@@ -122,13 +122,13 @@ class ChatsAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Message.objects.filter(session=self.session).count(), 0)
 
-    @patch("chats.views.get_ai_tutor_response")
-    def test_send_message_ai_failure(self, mock_ai_service):
+    @patch("chats.views.generate_ai_response_text")
+    def test_send_message_ai_failure(self, mock_generate_text):
         """
         Test how the system behaves if the Groq API crashes or goes offline.
         """
         # Force the fake AI to raise an exception
-        mock_ai_service.side_effect = Exception("Groq API is down!")
+        mock_generate_text.side_effect = Exception("Groq API is down!")
 
         data = {"content_text": "Hi"}
         response = self.client.post(self.send_message_url, data)

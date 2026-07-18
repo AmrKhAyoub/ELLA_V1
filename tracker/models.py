@@ -21,3 +21,24 @@ class UserCurrentLocation(models.Model):
 
     def __str__(self):
         return f"Location for {self.user.email}"
+
+
+class EnrichedPlace(models.Model):
+    name = models.CharField(max_length=255)
+    city = models.CharField(max_length=255, default="Unknown")
+    place_type = models.CharField(max_length=100)  # e.g., 'university', 'restaurant'
+
+    # Stores the JSON object returned by Groq
+    ai_data = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        # Prevent enriching the exact same place in the same city multiple times
+        unique_together = ("name", "city")
+        verbose_name = "Enriched Place"
+        verbose_name_plural = "Enriched Places"
+
+    def __str__(self):
+        return f"{self.name} ({self.city}) - {self.place_type}"

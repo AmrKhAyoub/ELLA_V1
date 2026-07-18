@@ -4,14 +4,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+# IMPORT THE NEW CENTRALIZED SERVICE
+from services.llm_service import generate_ai_response_text
+
+# Ensure you import your models and serializers properly
 from .models import Message, Session
 from .serializers import MessageSerializer, SessionSerializer
-from .services import get_ai_tutor_response
 
 
 class SessionListCreateAPIView(generics.ListCreateAPIView):
     """
-    GET: List all chat sessions for the logged-in user.
+    GET: List all chat sessions for the authenticated user.
     POST: Create a new chat session.
     """
 
@@ -19,10 +22,9 @@ class SessionListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Session.objects.filter(user=self.request.user).order_by("-created_at")
+        return Session.objects.filter(user=self.request.user).order_by("-id")
 
     def perform_create(self, serializer):
-        # Automatically assign the logged-in user to the new session
         serializer.save(user=self.request.user)
 
 
@@ -35,10 +37,11 @@ class SessionMessagesAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        session_id = self.kwargs["session_id"]
+        session_id = self.kwargs.get("session_id")
+        # Ensure the user only gets messages from their own session
         return Message.objects.filter(
             session__id=session_id, session__user=self.request.user
-        )
+        ).order_by("timestamp")
 
 
 class SendMessageAPIView(APIView):
@@ -70,21 +73,38 @@ class SendMessageAPIView(APIView):
             session=session, sender=Message.SenderChoices.USER, content_text=user_text
         )
 
-        # 2. Get AI Response via the service layer
+        # 2. Prepare conversation history for context
+        recent_messages = Message.objects.filter(session=session).order_by(
+            "-timestamp"
+        )[:10]
+
+        history = []
+        # Reverse the list so the messages are in chronological order for the AI model
+        for msg in reversed(recent_messages):
+            role = "user" if msg.sender == Message.SenderChoices.USER else "assistant"
+            history.append({"role": role, "content": msg.content_text})
+
+        # Define the system prompt dynamically based on the session's topic
+        topic_name = getattr(session, "topic", "General English Practice")
+        system_prompt = f"You are a helpful and friendly English AI tutor. The current topic is '{topic_name}'. Correct any grammar mistakes gently, keep the conversation engaging, and provide concise answers."
+
+        # 3. Get AI Response via the NEW centralized service layer
         try:
-            ai_text = get_ai_tutor_response(session, user_text)
+            ai_text = generate_ai_response_text(
+                system_prompt=system_prompt, user_messages=history
+            )
         except Exception as e:
             return Response(
                 {"error": f"AI service failed: {str(e)}"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        # 3. Save AI Message
+        # 4. Save AI Message
         ai_message = Message.objects.create(
             session=session, sender=Message.SenderChoices.AI, content_text=ai_text
         )
 
-        # Return both messages to the frontend so it can update the UI immediately
+        # 5. Return both messages to the frontend so it can update the UI immediately
         return Response(
             {
                 "user_message": MessageSerializer(user_message).data,
