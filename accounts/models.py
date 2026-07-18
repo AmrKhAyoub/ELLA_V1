@@ -74,7 +74,8 @@ class CustomUser(AbstractUser):
         blank=True,
         related_name="students",
     )
-
+    # Flag to check if the user has completed the initial onboarding assessment
+    has_taken_initial_assessment = models.BooleanField(default=False)
     # Django requires this to know which field is used for authentication
     USERNAME_FIELD = "email"
     # Username is required by AbstractUser by default, we keep it in REQUIRED_FIELDS

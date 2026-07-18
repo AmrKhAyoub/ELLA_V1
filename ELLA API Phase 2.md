@@ -299,3 +299,182 @@ Authorization: Bearer <your_access_token>
 }
 
 ```
+## 6. Assessments (Onboarding & Grading)
+
+### 6.1 Start or Resume Assessment Session
+
+**URL:** `/api/assessments/session/`
+
+**Method:** `GET`
+
+**Auth Required:** Yes
+
+**Description:** Initializes a new onboarding assessment session for the user or resumes an existing `in_progress` session. It automatically checks if the existing session is older than 7 days; if so, it discards the expired draft and starts a fresh one. If the user has already completed the assessment, it returns a 400 Bad Request.
+
+**Example Request:** `GET /api/assessments/session/`
+
+**Success Response (200 OK):**
+
+```json
+{
+    "message": "Resuming your ongoing assessment.",
+    "session": {
+        "id": 42,
+        "status": "in_progress",
+        "current_step": 3,
+        "draft_data": {
+            "step_1": {
+                "name": "Leo",
+                "age_group": "18-24",
+                "native_language": "Spanish"
+            },
+            "step_2": {
+                "overall_rating": 6,
+                "reading_skill": 7
+            }
+        },
+        "final_score": null,
+        "assigned_level": null,
+        "updated_at": "2023-10-25T10:15:30Z"
+    }
+}
+
+```
+
+**Error Response (400 Bad Request) - Already Completed:**
+
+```json
+{
+    "message": "You have already completed the assessment."
+}
+
+```
+
+---
+
+### 6.2 Get Academic Assessment Questions
+
+**URL:** `/api/assessments/questions/`
+
+**Method:** `GET`
+
+**Auth Required:** Yes
+
+**Description:** Retrieves the list of academic questions (CEFR A1-C1) required for Step 6 of the assessment. **Note:** The `correct` answer index and `explanation` fields are intentionally stripped from the backend payload to prevent cheating on the client side.
+
+**Example Request:** `GET /api/assessments/questions/`
+
+**Success Response (200 OK):**
+
+```json
+[
+    {
+        "id": 1,
+        "level": "A1",
+        "question": "She __________ to the gym every day.",
+        "options": [
+            "go",
+            "goes",
+            "going",
+            "gone"
+        ]
+    },
+    {
+        "id": 2,
+        "level": "A1",
+        "question": "I want to buy some fresh bread. Let's go to the __________.",
+        "options": [
+            "library",
+            "bakery",
+            "pharmacy",
+            "museum"
+        ]
+    }
+]
+
+```
+
+---
+
+### 6.3 Save Step Progress (Incremental Save)
+
+**URL:** `/api/assessments/save-step/`
+
+**Method:** `POST`
+
+**Auth Required:** Yes
+
+**Description:** Incrementally saves the user's answers for a specific assessment step (1 to 7) into the session's `draft_data` JSON field. Automatically increments the `current_step` counter on the server.
+
+**POST Request Body:**
+
+```json
+{
+    "step_number": 3,
+    "step_data": {
+        "interests": ["📚 Reading", "🎬 Movies & TV", "🎮 Tech & Gaming"],
+        "sub_interests": {
+            "🎮 Tech & Gaming": ["PC gaming (Steam, MMOs)", "Programming / Coding"]
+        }
+    }
+}
+
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+    "message": "Step 3 saved successfully.",
+    "current_step": 4
+}
+
+```
+
+**Error Response (404 Not Found) - No Active Session:**
+
+```json
+{
+    "error": "No active assessment session found."
+}
+
+```
+
+---
+
+### 6.4 Submit Assessment and Generate Results
+
+**URL:** `/api/assessments/submit/`
+
+**Method:** `POST`
+
+**Auth Required:** Yes
+
+**Description:** Finalizes the assessment session. It grades the academic answers stored in the `step_6` draft data, calculates the final score out of 10, assigns a CEFR English level based on the result, marks the session as `completed`, and updates the user's profile flag (`has_taken_initial_assessment` = True).
+
+**POST Request Body:**
+
+*(Empty Body `{}` — the server uses the previously saved draft data)*
+
+**Example Request:** `POST /api/assessments/submit/`
+
+**Success Response (200 OK):**
+
+```json
+{
+    "message": "Assessment completed successfully!",
+    "final_score": 8,
+    "level": "Advanced (CEFR C1)",
+    "roadmap_ready": true
+}
+
+```
+
+**Error Response (400 Bad Request) - Missing or Expired Session:**
+
+```json
+{
+    "error": "Session expired. Please restart the assessment."
+}
+
+```
