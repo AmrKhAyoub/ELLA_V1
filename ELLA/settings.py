@@ -24,7 +24,9 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = ["*"]
-
+CSRF_TRUSTED_ORIGINS = [
+    "https://ella-v1.onrender.com",
+]
 
 INSTALLED_APPS = [
     "daphne",  # Must be at the top for Channels
