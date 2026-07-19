@@ -10,9 +10,9 @@ WORKDIR /app
 
 
 RUN apt-get update \
-    && apt-get install -y gcc libpq-dev supervisor \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+&& apt-get install -y gcc libpq-dev supervisor \
+&& apt-get clean \
+&& rm -rf /var/lib/apt/lists/*
 
 
 COPY requirements.txt /app/
@@ -21,11 +21,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
-
-RUN python manage.py collectstatic --noinput
+RUN GROQ_API_KEY=temporary_key_for_build python manage.py collectstatic --noinput
 
 
 EXPOSE 7860
 
 
 CMD ["supervisord", "-c", "supervisord.conf"]
+
+
