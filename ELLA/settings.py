@@ -3,6 +3,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,10 +21,12 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 # Optionally, you can raise an error if the key is missing to prevent silent failures
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY is missing from the .env file!")
-
-SECRET_KEY = "django-insecure-tx^8_5(qcqy%6n&vb9l8xf#w50m&v0^ti1cml$54#mpkwy4xd)"
-DEBUG = True
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY is missing from the .env file!")
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = ["*"]
+
 
 INSTALLED_APPS = [
     "daphne",  # Must be at the top for Channels
@@ -80,21 +83,22 @@ TEMPLATES = [
 ASGI_APPLICATION = "ELLA.asgi.application"
 WSGI_APPLICATION = "ELLA.wsgi.application"
 
-# Channels Redis Layer config
+# Redis configuration
+REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.pubsub.RedisPubSubChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [REDIS_URL],
         },
     },
 }
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.parse(
+        "postgresql://neondb_owner:npg_iFA3asJh7HZo@ep-restless-boat-auppy6l4-pooler.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    )
 }
 
 LANGUAGE_CODE = "en-us"
@@ -126,8 +130,8 @@ SIMPLE_JWT = {
 }
 
 # Celery Configuration
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
