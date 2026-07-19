@@ -27,6 +27,9 @@ ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = [
     "https://ella-v1.onrender.com",
     "https://ella-frontend.vercel.app",
+    "http://localhost",
+    "capacitor://localhost",
+    "https://ella-mobile.app",
 ]
 
 INSTALLED_APPS = [
@@ -143,5 +146,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://ella-frontend.vercel.app",
+    "http://localhost",
+    "capacitor://localhost",
+    "https://ella-mobile.app",
 ]
 APPEND_SLASH = False
