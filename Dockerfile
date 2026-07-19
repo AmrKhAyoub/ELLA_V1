@@ -21,8 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
-RUN GROQ_API_KEY=temporary_key_for_build python manage.py collectstatic --noinput
-
+RUN python manage.py collectstatic --noinput
 
 EXPOSE 7860
 

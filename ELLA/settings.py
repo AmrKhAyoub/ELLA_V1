@@ -16,14 +16,12 @@ env_path = os.path.join(BASE_DIR, ".env")
 load_dotenv(env_path)
 
 # 4. Now os.environ.get will successfully find the key!
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "dummy-groq-key-for-build")
 
-# Optionally, you can raise an error if the key is missing to prevent silent failures
-if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY is missing from the .env file!")
-SECRET_KEY = os.environ.get("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY is missing from the .env file!")
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "django-insecure-dummy-key-for-building-purposes-12345"
+)
+
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = ["*"]
 
