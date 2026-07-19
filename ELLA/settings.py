@@ -26,6 +26,7 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = [
     "https://ella-v1.onrender.com",
+    "https://ella-frontend.vercel.app",
 ]
 
 INSTALLED_APPS = [
@@ -54,6 +55,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # 1. Put this at the absolute top
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",  # 2. CorsMiddleware MUST be above this
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -140,5 +142,6 @@ CELERY_TIMEZONE = "UTC"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://ella-frontend.vercel.app",
 ]
 APPEND_SLASH = False

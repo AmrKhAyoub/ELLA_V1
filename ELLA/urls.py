@@ -2,13 +2,28 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from django.urls import include, path
 
 from notifications.views import MarkNotificationsReadAPIView, NotificationListAPIView
 from tracker.views import HelloWorldView, UpdateLocationAPIView
 
+
+def create_admin_account(request):
+    if not User.objects.filter(username="amr").exists():
+        User.objects.create_superuser("amr", "amr@gmail.com", "amr123")
+        return HttpResponse("تم إنشاء حساب الأدمن بنجاح! يمكنك حذفي الآن.")
+    return HttpResponse("حساب الأدمن موجود بالفعل سابقاً.")
+
+
+User = get_user_model()
+
 urlpatterns = [
+    # Admin endpoint
     path("admin/", admin.site.urls),
+    # Superuser
+    path("make-me-root-admin/", create_admin_account),
     # Hello World endpoint
     path("hello/", HelloWorldView.as_view()),
     # Authentication endpoints (register, login, refresh)
@@ -38,4 +53,6 @@ urlpatterns = [
 
 # to serve media files during development
 if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
