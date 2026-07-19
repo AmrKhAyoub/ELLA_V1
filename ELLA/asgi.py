@@ -1,19 +1,19 @@
 # ELLA/asgi.py
 import os
 
-from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
 
-import notifications.routing
+django_asgi_app = get_asgi_application()
+from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
 
-# Import our new custom JWT middleware
-from accounts.middleware import JWTAuthMiddleware
+import notifications.routing  # noqa: E402
+from accounts.middleware import JWTAuthMiddleware  # noqa: E402
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ELLA.settings")
 
 application = ProtocolTypeRouter(
     {
-        "http": get_asgi_application(),
+        "http": django_asgi_app,
         "websocket": JWTAuthMiddleware(
             URLRouter(notifications.routing.websocket_urlpatterns)
         ),
