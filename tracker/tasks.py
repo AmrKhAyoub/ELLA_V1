@@ -95,10 +95,19 @@ def process_location_task(user_id, lat, lon, ip):
     # 8. Dispatch to the notifications app
     # E.g., Notification.objects.create(...)
 
-    print(f"--- NOTIFICATION FOR {user.username} ---")
-    print(f"Message: {notification_text}")
-    print(f"Place Description: {llm_description}")
-    print("----------------------------------------")
+    title = f"New discovery near {nearby_place_name}!"
+
+    # أ. حفظ الإشعار في قاعدة البيانات
+    NotificationHistory.objects.create(
+        user=user, title=title, message=notification_text
+    )
+
+    # ب. إرسال الإشعار لحظياً عبر الـ WebSockets
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"user_{user.id}",
+        {"type": "send_notification", "title": title, "message": notification_text},
+    )
 
     return "Location processed, data enriched, and notification ready."
 
