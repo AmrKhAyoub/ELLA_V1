@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # Third party
     "corsheaders",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "django_celery_beat",
     "channels",
     # Local apps

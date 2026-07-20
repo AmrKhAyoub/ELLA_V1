@@ -14,7 +14,8 @@ from .serializers import MessageSerializer, SessionSerializer
 
 class SessionListCreateAPIView(generics.ListCreateAPIView):
     """
-    GET: List all chat sessions for the authenticated user.
+    GET: List all chat sessions for the authenticated user, ordered by newest first.
+         Can be filtered by topic (e.g., ?topic=English).
     POST: Create a new chat session.
     """
 
@@ -22,10 +23,36 @@ class SessionListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Session.objects.filter(user=self.request.user).order_by("-id")
+        # Order by created_at descending (newest to oldest)
+        queryset = Session.objects.filter(user=self.request.user).order_by(
+            "-created_at"
+        )
+
+        # Filter by topic if provided in query parameters
+        topic = self.request.query_params.get("topic", None)
+        if topic is not None:
+            queryset = queryset.filter(topic__icontains=topic)
+
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class SessionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET: Retrieve a specific session details.
+    PUT/PATCH: Update the session topic.
+    DELETE: Delete the session (cascades to delete all related messages).
+    """
+
+    serializer_class = SessionSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_url_kwarg = "session_id"  # Matches the URL parameter
+
+    def get_queryset(self):
+        # Ensure the user can only access, update, or delete their own sessions
+        return Session.objects.filter(user=self.request.user)
 
 
 class SessionMessagesAPIView(generics.ListAPIView):
@@ -38,7 +65,6 @@ class SessionMessagesAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         session_id = self.kwargs.get("session_id")
-        # Ensure the user only gets messages from their own session
         return Message.objects.filter(
             session__id=session_id, session__user=self.request.user
         ).order_by("timestamp")
@@ -61,34 +87,28 @@ class SendMessageAPIView(APIView):
             )
 
         try:
-            # Ensure the session belongs to the user
             session = Session.objects.get(id=session_id, user=request.user)
         except Session.DoesNotExist:
             return Response(
                 {"error": "Session not found."}, status=status.HTTP_404_NOT_FOUND
             )
 
-        # 1. Save User Message
         user_message = Message.objects.create(
             session=session, sender=Message.SenderChoices.USER, content_text=user_text
         )
 
-        # 2. Prepare conversation history for context
         recent_messages = Message.objects.filter(session=session).order_by(
             "-timestamp"
         )[:10]
 
         history = []
-        # Reverse the list so the messages are in chronological order for the AI model
         for msg in reversed(recent_messages):
             role = "user" if msg.sender == Message.SenderChoices.USER else "assistant"
             history.append({"role": role, "content": msg.content_text})
 
-        # Define the system prompt dynamically based on the session's topic
         topic_name = getattr(session, "topic", "General English Practice")
         system_prompt = f"You are a helpful and friendly English AI tutor. The current topic is '{topic_name}'. Correct any grammar mistakes gently, keep the conversation engaging, and provide concise answers."
 
-        # 3. Get AI Response via the NEW centralized service layer
         try:
             ai_text = generate_ai_response_text(
                 system_prompt=system_prompt, user_messages=history
@@ -99,12 +119,10 @@ class SendMessageAPIView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        # 4. Save AI Message
         ai_message = Message.objects.create(
             session=session, sender=Message.SenderChoices.AI, content_text=ai_text
         )
 
-        # 5. Return both messages to the frontend so it can update the UI immediately
         return Response(
             {
                 "user_message": MessageSerializer(user_message).data,
