@@ -2,14 +2,16 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # Import the new models and tasks
-from .models import EnrichedPlace
-from .tasks import enrich_places_data_task
+from .models import EnrichedPlace, UserCurrentLocation
+from .tasks import enrich_places_data_task, process_location_task
+from .utils import create_notification_content
 
 User = get_user_model()
 
@@ -181,3 +183,120 @@ class TrackerTasksTests(APITestCase):
         # Verify it wasn't saved to the DB
         self.assertFalse(EnrichedPlace.objects.filter(name="Failing Museum").exists())
         self.assertTrue(mock_generate_json.called)
+
+
+class UtilsNotificationTests(TestCase):
+    """
+    Test suite for the updated dynamic notification content generation.
+    """
+
+    def test_create_notification_content_with_valid_ai_data(self):
+        """
+        Ensure the notification logic properly extracts the 5 words
+        from the AI JSON and formats the prompt string correctly.
+        """
+        mock_ai_data = {
+            "description": "A very historic and amazing place.",
+            "contextual_vocabulary": [
+                "artifact",
+                "exhibition",
+                "ancient",
+                "history",
+                "culture",
+            ],
+        }
+
+        notification_text, description = create_notification_content(
+            current_place_name="Downtown",
+            nearby_place_name="National Museum",
+            ai_data=mock_ai_data,
+        )
+
+        # Check that the returned description matches the AI data
+        self.assertEqual(description, "A very historic and amazing place.")
+
+        # Check that all elements are inside the notification string
+        self.assertIn("You are now in Downtown", notification_text)
+        self.assertIn("National Museum near to you", notification_text)
+        self.assertIn(
+            "artifact, exhibition, ancient, history, culture", notification_text
+        )
+
+    def test_create_notification_content_fallback(self):
+        """
+        Ensure the fallback mechanism works if AI data is empty or missing.
+        """
+        notification_text, description = create_notification_content(
+            current_place_name="Downtown",
+            nearby_place_name="National Museum",
+            ai_data={},  # Empty data
+        )
+
+        self.assertIn(
+            "Let's discover new words around National Museum", notification_text
+        )
+        self.assertIsNone(description)
+
+
+class ProcessLocationTaskIntegrationTests(TestCase):
+    """
+    Test suite for the primary location processing background task.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="task_user", email="task@ella.com", password="pwd"
+        )
+
+    @patch("tracker.tasks.generate_ai_response_json")
+    @patch("tracker.tasks.get_places_nearby")
+    @patch("tracker.tasks.reverse_geocode")
+    def test_process_location_task_full_flow(
+        self, mock_geocode, mock_nearby, mock_ai_json
+    ):
+        """
+        Test the entire task flow: getting location, finding places,
+        calling the AI service, saving to DB, and generating text.
+        """
+        # 1. Mock the Geocoding response
+        mock_geocode.return_value = {"city": "Eindhoven", "place_name": "City Center"}
+
+        # 2. Mock the Overpass nearby places response
+        mock_nearby.return_value = [
+            {"name": "Eindhoven Library", "type": "university", "distance_meters": 100}
+        ]
+
+        # 3. Mock the AI LLM response (Groq API)
+        mock_ai_json.return_value = {
+            "description": "A quiet environment for students.",
+            "contextual_vocabulary": ["book", "study", "exam", "focus", "read"],
+        }
+
+        # Execute the Celery task directly for testing
+        result = process_location_task(self.user.id, 51.4416, 5.4697, "127.0.0.1")
+
+        # Assertions
+        self.assertEqual(
+            result, "Location processed, data enriched, and notification ready."
+        )
+
+        # Check if the EnrichedPlace was saved in the Database
+        self.assertTrue(
+            EnrichedPlace.objects.filter(
+                name="Eindhoven Library", city="Eindhoven"
+            ).exists()
+        )
+
+        saved_place = EnrichedPlace.objects.get(name="Eindhoven Library")
+        self.assertEqual(saved_place.place_type, "university")
+        self.assertEqual(
+            saved_place.ai_data["description"], "A quiet environment for students."
+        )
+
+        # Check if the user location was updated in the DB
+        self.assertTrue(UserCurrentLocation.objects.filter(user=self.user).exists())
+
+        # Verify our mock functions were called correctly
+        mock_geocode.assert_called_once_with(51.4416, 5.4697)
+        mock_nearby.assert_called_once_with(51.4416, 5.4697)
+        mock_ai_json.assert_called_once()

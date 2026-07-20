@@ -38,68 +38,69 @@ def send_ws_notification(user_id, title, message):
 
 @shared_task
 def process_location_task(user_id, lat, lon, ip):
-    tracking_method = "GPS"
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return "User not found"
 
-    # If no GPS provided, Fallback to IP
-    if lat is None or lon is None:
-        ip_info = get_location_by_ip(ip)
-        if not ip_info:
-            return "Failed to get IP location"
-        lat, lon = ip_info["lat"], ip_info["lon"]
-        tracking_method = "IP"
+    # 1. Reverse geocode to get the current city and current place name
+    location_info = reverse_geocode(lat, lon)
+    current_city = location_info.get("city", "Unknown")
+    current_place_name = location_info.get("place_name", "Unknown Location")
 
-    lat, lon = float(lat), float(lon)
-    geo_info = reverse_geocode(lat, lon)
-    place_name = geo_info.get("place_name", "Unknown Area")
+    # 2. Get nearby places using Overpass API
+    nearby_places = get_places_nearby(lat, lon)
 
-    # Extract city name to pass it to the enrichment task
-    city_name = geo_info.get("city", "Unknown")
+    if not nearby_places:
+        return "No nearby places found."
 
-    # Get User's Current Location Record
-    location_record, created = UserCurrentLocation.objects.get_or_create(
-        user_id=user_id
+    # 3. Select the closest place to generate vocabulary for
+    closest_place = nearby_places[0]
+    nearby_place_name = closest_place.get("name")
+    place_type = closest_place.get("type", "general")
+
+    # 4. Check if we already enriched this place in the database
+    enriched_place, created = EnrichedPlace.objects.get_or_create(
+        name=nearby_place_name, city=current_city, defaults={"place_type": place_type}
     )
 
-    # Check if the user has moved significantly (e.g., > 100 meters)
-    has_moved = True
-    if not created and location_record.latitude and location_record.longitude:
-        dist = calculate_distance(
-            lat, lon, location_record.latitude, location_record.longitude
+    # 5. If the place is new or missing AI data, fetch it using YOUR existing LLM service
+    if created or not enriched_place.ai_data:
+        # Construct the user prompt dynamically based on the location details
+        user_prompt = f"Place Name: {nearby_place_name}\nCategory: {place_type}\nCity: {current_city}"
+
+        # Call your existing function from llm_service.py
+        ai_generated_json = generate_ai_response_json(
+            system_prompt=PLACE_ENRICHMENT_SYSTEM_PROMPT, user_prompt=user_prompt
         )
-        if dist < 100:  # 100 meters radius
-            has_moved = False
 
-    if has_moved:
-        # Process heavy Overpass API call ONLY if user moved
-        nearby_places = get_places_nearby(lat, lon, radius_m=1000)
+        # Save the generated JSON to the database (if it is not None)
+        if ai_generated_json:
+            enriched_place.ai_data = ai_generated_json
+            enriched_place.save()
 
-        # =========================================================
-        # NEW AI ENRICHMENT TRIGGER: Run only if places are found
-        # =========================================================
-        if nearby_places:
-            # Slice the top 3 closest places to save LLM API costs
-            top_places = nearby_places[:3]
-            # Dispatch the sub-task to Celery in the background
-            enrich_places_data_task.delay(top_places, city_name)
-        # =========================================================
+    # 6. Generate the final notification content and extract the description
+    notification_text, llm_description = create_notification_content(
+        current_place_name=current_place_name,
+        nearby_place_name=nearby_place_name,
+        ai_data=enriched_place.ai_data,
+    )
 
-        # Generate Notification Content
-        msg = create_notification_content(place_name, nearby_places, is_static=False)
-        send_ws_notification(user_id, "Location Update", msg)
+    # 7. Update the user's current location in the database
+    UserCurrentLocation.objects.update_or_create(
+        user=user,
+        defaults={"latitude": lat, "longitude": lon, "place_name": current_place_name},
+    )
 
-        # Update DB Record
-        location_record.latitude = lat
-        location_record.longitude = lon
-        location_record.place_name = place_name
-        location_record.tracking_method = tracking_method
-        location_record.arrival_time = timezone.now()
-        location_record.is_static = False
+    # 8. Dispatch to the notifications app
+    # E.g., Notification.objects.create(...)
 
-    # Always update last_updated timestamp so we know the app is active
-    location_record.last_updated = timezone.now()
-    location_record.save()
+    print(f"--- NOTIFICATION FOR {user.username} ---")
+    print(f"Message: {notification_text}")
+    print(f"Place Description: {llm_description}")
+    print("----------------------------------------")
 
-    return "Task completed"
+    return "Location processed, data enriched, and notification ready."
 
 
 @shared_task
