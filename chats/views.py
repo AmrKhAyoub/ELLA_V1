@@ -5,10 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from analytics.models import Mistake
+from analytics.serializers import MistakeSerializer
 from notifications.models import NotificationHistory
 
 # IMPORT THE NEW CENTRALIZED SERVICE
-from services.llm_service import generate_ai_response_text
+from services.llm_service import generate_ai_response_json, generate_ai_response_text
 
 # Ensure you import your models and serializers properly
 from .models import Message, Session
@@ -205,6 +207,123 @@ class CreateDictationSessionAPIView(APIView):
             {
                 "session": SessionSerializer(session).data,
                 "first_message": MessageSerializer(ai_message).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class SendDictationMessageAPIView(APIView):
+    """
+    POST: Receive user dictation message, extract mistakes via LLM JSON,
+    save mistakes to DB, and return AI response.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, session_id):
+        user_text = request.data.get("content_text")
+
+        if not user_text:
+            return Response(
+                {"error": "Content text is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            session = Session.objects.get(id=session_id, user=request.user)
+        except Session.DoesNotExist:
+            return Response(
+                {"error": "Session not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 1. Save the user message first
+        user_message = Message.objects.create(
+            session=session, sender=Message.SenderChoices.USER, content_text=user_text
+        )
+
+        # 2. Retrieve recent conversation history
+        recent_messages = Message.objects.filter(session=session).order_by(
+            "-timestamp"
+        )[:10]
+        history = []
+        for msg in reversed(recent_messages):
+            role = "user" if msg.sender == Message.SenderChoices.USER else "assistant"
+            history.append(f"{role}: {msg.content_text}")
+
+        conversation_context = "\n".join(history)
+
+        # 3. Formulate the strict JSON System Prompt
+        system_prompt = (
+            "You are an encouraging and friendly English AI tutor conducting a dictation session. "
+            "Review the user's latest message for any language errors (Grammar, Spelling, Vocabulary, or Punctuation). "
+            "You MUST respond strictly in valid JSON format. "
+            "Your JSON response must match this EXACT structure:\n"
+            "{\n"
+            '  "ai_response": "Your friendly, conversational response continuing the dictation. (Do not mention the mistake here, keep it natural).",\n'
+            '  "has_mistake": true or false,\n'
+            '  "mistake_details": {\n'
+            '    "wrong_text": "the exact text that contains the mistake (leave empty if no mistake)",\n'
+            '    "corrected_text": "the corrected version (leave empty if no mistake)",\n'
+            '    "category": "GRAMMAR" or "SPELLING" or "VOCABULARY" or "PUNCTUATION" (leave empty if no mistake),\n'
+            '    "explanation": "A short, friendly explanation of the mistake (leave empty if no mistake)"\n'
+            "  }\n"
+            "}\n"
+            "If the user made multiple mistakes, summarize the most important one in the 'mistake_details' object."
+        )
+
+        user_prompt = f"Conversation History:\n{conversation_context}\n\nPlease analyze my latest message and respond in JSON."
+
+        # 4. Call the LLM JSON service
+        try:
+            ai_data = generate_ai_response_json(
+                system_prompt=system_prompt, user_prompt=user_prompt
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"AI service failed: {str(e)}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        if not ai_data:
+            return Response(
+                {"error": "Failed to parse AI response."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # 5. Save the AI's conversational response
+        ai_text = ai_data.get("ai_response", "Great job! Let's continue.")
+        ai_message = Message.objects.create(
+            session=session, sender=Message.SenderChoices.AI, content_text=ai_text
+        )
+
+        mistake_data = None
+
+        # 6. Save Mistake to database if one exists
+        if ai_data.get("has_mistake") and ai_data.get("mistake_details"):
+            details = ai_data["mistake_details"]
+            # Ensure category is valid based on Mistake.CategoryChoices
+            valid_categories = [c[0] for c in Mistake.CategoryChoices.choices]
+            category = details.get("category", Mistake.CategoryChoices.GRAMMAR)
+            if category not in valid_categories:
+                category = Mistake.CategoryChoices.GRAMMAR
+
+            mistake_instance = Mistake.objects.create(
+                user=request.user,
+                message=user_message,
+                wrong_text=details.get("wrong_text", ""),
+                corrected_text=details.get("corrected_text", ""),
+                category=category,
+                explanation=details.get("explanation", ""),
+            )
+            mistake_data = MistakeSerializer(mistake_instance).data
+
+        # 7. Return the full payload to the frontend
+        return Response(
+            {
+                "user_message": MessageSerializer(user_message).data,
+                "ai_message": MessageSerializer(ai_message).data,
+                "mistake_detected": ai_data.get("has_mistake", False),
+                "mistake_info": mistake_data,
             },
             status=status.HTTP_201_CREATED,
         )

@@ -23,7 +23,10 @@ SECRET_KEY = os.environ.get(
 )
 
 DEBUG = os.environ.get("DEBUG", "False") == "True"
+# DEBUG = "True"
+
 ALLOWED_HOSTS = ["*"]
+
 CSRF_TRUSTED_ORIGINS = [
     "https://ella-v1.onrender.com",
     "https://ella-frontend.vercel.app",

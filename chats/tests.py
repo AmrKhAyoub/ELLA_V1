@@ -7,9 +7,10 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from analytics.models import Mistake
 from notifications.models import NotificationHistory
 
-from .models import Session
+from .models import Message, Session
 
 User = get_user_model()
 
@@ -41,13 +42,16 @@ class ChatsAPITests(APITestCase):
             "send_message", kwargs={"session_id": self.session.id}
         )
 
-        # 2. ADD THE NEW URL FOR DICTATION
+        # URL FOR CREATING DICTATION
         self.create_dictation_url = reverse("create_dictation_session")
 
-    # ... (Keep your existing tests here: test_create_session_success, test_get_session_list, etc.) ...
+        # URL FOR SENDING DICTATION MESSAGES (WITH MISTAKE CHECK)
+        self.send_dictation_url = reverse(
+            "send_dictation_message", kwargs={"session_id": self.session.id}
+        )
 
     # =========================================================
-    # NEW TESTS FOR DICTATION SESSION
+    # EXISTING TESTS FOR CREATING DICTATION SESSION
     # =========================================================
 
     @patch("chats.views.generate_ai_response_text")
@@ -137,3 +141,75 @@ class ChatsAPITests(APITestCase):
             "Hello! I saw you are exploring a new place!",
             response.data["first_message"]["content_text"],
         )
+
+    @patch("chats.views.generate_ai_response_json")
+    def test_send_dictation_message_with_mistake(self, mock_generate_json):
+        """
+        Test sending a dictation message where the user makes a language mistake.
+        Verifies that a Mistake instance is created and linked correctly.
+        """
+        # Mock the AI JSON response indicating a mistake
+        mock_generate_json.return_value = {
+            "ai_response": "I understood what you meant, but let's fix that sentence!",
+            "has_mistake": True,
+            "mistake_details": {
+                "wrong_text": "I go to library yesterday",
+                "corrected_text": "I went to the library yesterday",
+                "category": "GRAMMAR",
+                "explanation": "Use past tense 'went' for yesterday.",
+            },
+        }
+
+        payload = {"content_text": "I go to library yesterday"}
+        response = self.client.post(self.send_dictation_url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data.get("mistake_detected"))
+        self.assertIsNotNone(response.data.get("mistake_info"))
+
+        # Verify the Message objects were created
+        messages_count = Message.objects.filter(session=self.session).count()
+        self.assertEqual(messages_count, 2)  # 1 user message, 1 AI message
+
+        # Verify the Mistake object was saved to the database
+        mistake = Mistake.objects.first()
+        self.assertIsNotNone(mistake)
+        self.assertEqual(mistake.category, "GRAMMAR")
+        self.assertEqual(mistake.wrong_text, "I go to library yesterday")
+
+        # Verify the Mistake is linked correctly to the user's message via OneToOneField
+        user_message = Message.objects.get(sender="user")
+        self.assertEqual(mistake.message.id, user_message.id)
+
+        mock_generate_json.assert_called_once()
+
+    @patch("chats.views.generate_ai_response_json")
+    def test_send_dictation_message_no_mistake(self, mock_generate_json):
+        """
+        Test sending a perfect dictation message.
+        Verifies that NO Mistake instance is created.
+        """
+        # Mock the AI JSON response indicating NO mistake
+        mock_generate_json.return_value = {
+            "ai_response": "Perfectly said! What did you read?",
+            "has_mistake": False,
+            "mistake_details": {},
+        }
+
+        payload = {"content_text": "I went to the library yesterday."}
+        response = self.client.post(self.send_dictation_url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(response.data.get("mistake_detected"))
+        self.assertIsNone(response.data.get("mistake_info"))
+
+        # Verify NO mistake was saved
+        mistake_count = Mistake.objects.count()
+        self.assertEqual(mistake_count, 0)
+
+    def test_send_dictation_message_missing_text(self):
+        """
+        Test sending a dictation request without content_text returns 400.
+        """
+        response = self.client.post(self.send_dictation_url, {})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
