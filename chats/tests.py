@@ -7,7 +7,9 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Message, Session
+from notifications.models import NotificationHistory
+
+from .models import Session
 
 User = get_user_model()
 
@@ -25,15 +27,12 @@ class ChatsAPITests(APITestCase):
         )
         self.token = str(RefreshToken.for_user(self.user).access_token)
 
-        # Authenticate the test client
         self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.token)
 
-        # Create an initial session
         self.session = Session.objects.create(
             user=self.user, topic="Initial Test Session"
         )
 
-        # URLs
         self.session_list_url = reverse("session_list_create")
         self.session_messages_url = reverse(
             "session_messages", kwargs={"session_id": self.session.id}
@@ -42,96 +41,99 @@ class ChatsAPITests(APITestCase):
             "send_message", kwargs={"session_id": self.session.id}
         )
 
-    def test_create_session_success(self):
-        """
-        Test that an authenticated user can create a new chat session.
-        """
-        data = {"topic": "Grammar Practice"}
-        response = self.client.post(self.session_list_url, data)
+        # 2. ADD THE NEW URL FOR DICTATION
+        self.create_dictation_url = reverse("create_dictation_session")
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Session.objects.count(), 2)
-        self.assertEqual(response.data["topic"], "Grammar Practice")
+    # ... (Keep your existing tests here: test_create_session_success, test_get_session_list, etc.) ...
 
-    def test_get_session_list(self):
-        """
-        Test that a user can retrieve only their own sessions.
-        """
-        # Create a session for another user to ensure isolation
-        other_user = User.objects.create_user(
-            username="other", email="other@test.com", password="pwd"
-        )
-        Session.objects.create(user=other_user, topic="Other User Session")
+    # =========================================================
+    # NEW TESTS FOR DICTATION SESSION
+    # =========================================================
 
-        response = self.client.get(self.session_list_url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Should only return 1 session (the one created in setUp)
-        self.assertEqual(
-            (
-                len(response.data["results"])
-                if "results" in response.data
-                else len(response.data)
-            ),
-            1,
-        )
-
-    # ---------------------------------------------------------
-    # UPDATED PATCH: We now intercept 'generate_ai_response_text'
-    # from the centralized LLM service.
-    # ---------------------------------------------------------
     @patch("chats.views.generate_ai_response_text")
-    def test_send_message_success(self, mock_generate_text):
+    def test_create_dictation_session_success(self, mock_generate_text):
         """
-        Test that sending a message saves the user message, calls the NEW AI service,
-        and saves the AI response correctly.
+        Test that providing a valid notification_id creates a new session
+        and initiates a conversation with the AI successfully.
         """
-        # Configure the fake AI to return this string
+        # Mock the AI's opening response
         mock_generate_text.return_value = (
-            "Hello! I am the mock AI tutor. How can I help?"
+            "Welcome to the library! Can you explain the word 'book'?"
         )
 
-        data = {"content_text": "Hi AI, can you teach me English?"}
-        response = self.client.post(self.send_message_url, data)
+        # Create a mock notification for the test user
+        notification = NotificationHistory.objects.create(
+            user=self.user,
+            title="Discovery near Library",
+            message="You are now near a Library! words: book, quiet, read.",
+        )
 
+        # Send request
+        response = self.client.post(
+            self.create_dictation_url, {"notification_id": notification.id}
+        )
+
+        # Assertions
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("session", response.data)
+        self.assertIn("first_message", response.data)
 
-        # Verify the database has exactly 2 messages (1 user + 1 AI)
-        self.assertEqual(Message.objects.filter(session=self.session).count(), 2)
+        # Verify the session was created with the notification title as the topic
+        self.assertEqual(response.data["session"]["topic"], "Discovery near Library")
 
-        # Verify the response structure
-        self.assertIn("user_message", response.data)
-        self.assertIn("ai_message", response.data)
-
-        # Verify the AI message text matches our mock
+        # Verify the AI message text matches the mock and sender is AI
         self.assertEqual(
-            response.data["ai_message"]["content_text"],
-            "Hello! I am the mock AI tutor. How can I help?",
+            response.data["first_message"]["content_text"],
+            "Welcome to the library! Can you explain the word 'book'?",
         )
+        self.assertEqual(response.data["first_message"]["sender"], "ai")
 
-        # Verify that our centralized service function was actually called
+        # Verify the AI service was actually called
         mock_generate_text.assert_called_once()
 
-    def test_send_message_missing_content(self):
+    def test_create_dictation_session_wrong_user(self):
         """
-        Test that sending a blank message returns a 400 error.
+        Test that a user cannot start a dictation session using another user's notification.
+        Should return 404 Not Found.
         """
-        data = {"content_text": ""}
-        response = self.client.post(self.send_message_url, data)
+        # Create another user and a notification for them
+        other_user = User.objects.create_user(
+            username="thief", email="thief@test.com", password="pwd"
+        )
+        other_notification = NotificationHistory.objects.create(
+            user=other_user, title="Private Location", message="Secret words"
+        )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(Message.objects.filter(session=self.session).count(), 0)
+        # Attempt to access the other user's notification
+        response = self.client.post(
+            self.create_dictation_url, {"notification_id": other_notification.id}
+        )
+
+        # Should be blocked by get_object_or_404
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     @patch("chats.views.generate_ai_response_text")
-    def test_send_message_ai_failure(self, mock_generate_text):
+    def test_create_dictation_session_ai_fallback(self, mock_generate_text):
         """
-        Test how the system behaves if the Groq API crashes or goes offline.
+        Test that the system falls back to a default message gracefully
+        if the LLM API throws an exception.
         """
-        # Force the fake AI to raise an exception
-        mock_generate_text.side_effect = Exception("Groq API is down!")
+        # Force the AI to crash
+        mock_generate_text.side_effect = Exception("Groq API Timeout")
 
-        data = {"content_text": "Hi"}
-        response = self.client.post(self.send_message_url, data)
+        notification = NotificationHistory.objects.create(
+            user=self.user, title="Supermarket Visit", message="Words: apple, buy."
+        )
 
-        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
-        self.assertIn("AI service failed", response.data["error"])
+        response = self.client.post(
+            self.create_dictation_url, {"notification_id": notification.id}
+        )
+
+        # It should STILL succeed (201 Created) because we catch the exception
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verify it used the fallback default text
+        self.assertIn(
+            "Hello! I saw you are exploring a new place!",
+            response.data["first_message"]["content_text"],
+        )

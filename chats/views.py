@@ -1,8 +1,11 @@
 # chats/views.py
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from notifications.models import NotificationHistory
 
 # IMPORT THE NEW CENTRALIZED SERVICE
 from services.llm_service import generate_ai_response_text
@@ -127,6 +130,81 @@ class SendMessageAPIView(APIView):
             {
                 "user_message": MessageSerializer(user_message).data,
                 "ai_message": MessageSerializer(ai_message).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CreateDictationSessionAPIView(APIView):
+    """
+    POST: Creates a new dictation chat session triggered by a notification.
+    Expects 'notification_id' in the request body.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        notification_id = request.data.get("notification_id")
+
+        if not notification_id:
+            return Response(
+                {"error": "notification_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 1. Fetch the notification and ensure it belongs to the current user
+        notification = get_object_or_404(
+            NotificationHistory, id=notification_id, user=request.user
+        )
+
+        # 2. Extract context from the notification
+        # The notification message already contains the place and the 5 words.
+        notification_message = notification.message
+
+        # We will use the notification title as the session topic
+        session_topic = notification.title
+
+        # 3. Create a new Session
+        session = Session.objects.create(user=request.user, topic=session_topic)
+
+        # 4. Construct the exact Dictation Prompt
+        # We instruct the AI to initiate the conversation based on the notification context.
+        system_prompt = (
+            "You are an engaging, friendly English language tutor. "
+            "Your student has just arrived at a specific location and received this notification: "
+            f"'{notification_message}'.\n"
+            "Your goal is to start a 'dictation and explanation' session. "
+            "You must initiate the conversation by welcoming them to the place, mentioning "
+            "that you noticed they are near this location, and asking them to explain or define "
+            "the vocabulary words mentioned in the notification in English. "
+            "Keep your opening message encouraging and no longer than 3 sentences."
+        )
+
+        # Since this is the first message, the history is just the system prompt
+        # We pass an empty list for user_messages because the AI is starting the chat.
+        try:
+            ai_opening_text = generate_ai_response_text(
+                system_prompt=system_prompt, user_messages=[]
+            )
+        except Exception as e:
+            # If AI fails, we still created the session, but we fallback to a default message
+            ai_opening_text = (
+                "Hello! I saw you are exploring a new place! "
+                "Can you try to explain the words you just received in English?"
+            )
+
+        # 5. Save the AI's opening message to the database
+        ai_message = Message.objects.create(
+            session=session,
+            sender=Message.SenderChoices.AI,
+            content_text=ai_opening_text,
+        )
+
+        # 6. Return the session and the first message to the frontend
+        return Response(
+            {
+                "session": SessionSerializer(session).data,
+                "first_message": MessageSerializer(ai_message).data,
             },
             status=status.HTTP_201_CREATED,
         )

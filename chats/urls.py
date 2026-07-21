@@ -2,6 +2,7 @@
 from django.urls import path
 
 from .views import (
+    CreateDictationSessionAPIView,
     SendMessageAPIView,
     SessionListCreateAPIView,
     SessionMessagesAPIView,
@@ -26,5 +27,10 @@ urlpatterns = [
         "sessions/<uuid:session_id>/send/",
         SendMessageAPIView.as_view(),
         name="send_message",
+    ),
+    path(
+        "sessions/dictation/create/",
+        CreateDictationSessionAPIView.as_view(),
+        name="create_dictation_session",
     ),
 ]
