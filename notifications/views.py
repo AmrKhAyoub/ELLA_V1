@@ -1,5 +1,7 @@
 # notifications/views.py
 from rest_framework import status
+from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,25 +10,37 @@ from .models import NotificationHistory
 from .serializers import NotificationSerializer
 
 
-class NotificationListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class TenPerPagePagination(PageNumberPagination):
+    page_size = 10
 
-    def get(self, request, *args, **kwargs):
-        # using the test user with ID 1
-        # user, _ = User.objects.get_or_create(id=1, defaults={"username": "test_user_1"})
-        user = request.user
-        # retrieve all notifications for the user, ordered by creation date (most recent first)
-        notifications = NotificationHistory.objects.filter(user=user).order_by(
+
+class NotificationListAPIView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationSerializer
+    pagination_class = TenPerPagePagination
+
+    def get_queryset(self):
+        # user current notifiactions
+        return NotificationHistory.objects.filter(user=self.request.user).order_by(
             "-created_at"
         )
-        serializer = NotificationSerializer(notifications, many=True)
 
-        # calculate the count of unread notifications for the frontend (Badge)
-        unread_count = notifications.filter(is_read=False).count()
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
 
+        # total of unread notifications
+        unread_count = queryset.filter(is_read=False).count()
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response = self.get_paginated_response(serializer.data)
+            response.data["unread_count"] = unread_count
+            return response
+
+        serializer = self.get_serializer(queryset, many=True)
         return Response(
-            {"unread_count": unread_count, "notifications": serializer.data},
-            status=status.HTTP_200_OK,
+            {"unread_count": unread_count, "notifications": serializer.data}
         )
 
 
@@ -35,7 +49,6 @@ class MarkNotificationsReadAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         # using the test user with ID 1
-        # user, _ = User.objects.get_or_create(id=1, defaults={"username": "test_user_1"})
         user = request.user
 
         # update all unread notifications to be read in one operation

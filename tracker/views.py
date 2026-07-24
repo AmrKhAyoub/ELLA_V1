@@ -10,11 +10,6 @@ from rest_framework.views import APIView
 from .tasks import process_location_task
 
 
-class HelloWorldView(APIView):
-    def get(self, request):
-        return Response({"message": "Hello World wefjhwarlhg"})
-
-
 @method_decorator(csrf_exempt, name="dispatch")
 class UpdateLocationAPIView(APIView):
     permission_classes = [IsAuthenticated]

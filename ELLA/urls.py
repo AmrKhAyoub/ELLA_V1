@@ -4,17 +4,32 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.urls import include, path
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from notifications.views import MarkNotificationsReadAPIView, NotificationListAPIView
-from tracker.views import HelloWorldView, UpdateLocationAPIView
+from tracker.views import UpdateLocationAPIView
 
 User = get_user_model()
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response({"status": "healthy"}, status=200)
+
 
 urlpatterns = [
     # Admin endpoint
     path("admin/", admin.site.urls),
-    # Hello World endpoint
-    path("hello/", HelloWorldView.as_view()),
+    # Test Ping endpoint
+    path("ping/", health_check, name="health_check"),
     # Authentication endpoints (register, login, refresh)
     path("api/auth/", include("accounts.urls")),
     # Chat API endpoints
@@ -38,8 +53,17 @@ urlpatterns = [
         MarkNotificationsReadAPIView.as_view(),
         name="mark_notifications_read",
     ),
+    # API DOCUMENTATION
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
 # to serve media files during development
 if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

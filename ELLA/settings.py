@@ -9,21 +9,17 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 2. Construct the path to the .env file
 env_path = os.path.join(BASE_DIR, ".env")
-
-# 3. Load the environment variables from the file
 load_dotenv(env_path)
 
-# 4. Now os.environ.get will successfully find the key!
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "dummy-groq-key-for-build")
 
 SECRET_KEY = os.environ.get(
     "SECRET_KEY", "django-insecure-dummy-key-for-building-purposes-12345"
 )
 
-DEBUG = os.environ.get("DEBUG", "False") == "True"
 # DEBUG = "True"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -49,6 +45,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "django_celery_beat",
     "channels",
+    "drf_spectacular",
     # Local apps
     "tracker",
     "notifications",
@@ -118,6 +115,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # our custom user model
 AUTH_USER_MODEL = "accounts.CustomUser"
+
 # Static and Media Files
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
@@ -129,6 +127,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 SIMPLE_JWT = {
@@ -154,4 +153,5 @@ CORS_ALLOWED_ORIGINS = [
     "capacitor://localhost",
     "https://ella-mobile.app",
 ]
+
 APPEND_SLASH = False
